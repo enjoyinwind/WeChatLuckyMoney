@@ -7,19 +7,20 @@ import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.os.Parcelable;
-import android.graphics.Path;
 import android.preference.PreferenceManager;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.util.DisplayMetrics;
-import xyz.monkeytong.hongbao.utils.HongbaoSignature;
-import xyz.monkeytong.hongbao.utils.PowerUtil;
 
 import java.util.List;
+
+import xyz.monkeytong.hongbao.utils.HongbaoSignature;
+import xyz.monkeytong.hongbao.utils.PowerUtil;
 
 public class HongbaoService extends AccessibilityService implements SharedPreferences.OnSharedPreferenceChangeListener {
     private static final String TAG = "HongbaoService";
@@ -46,6 +47,9 @@ public class HongbaoService extends AccessibilityService implements SharedPrefer
     private PowerUtil powerUtil;
     private SharedPreferences sharedPreferences;
 
+    DingDingProcessor dingDingProcessor = new DingDingProcessor();
+    HuoChatProcessor huoChatProcessor = new HuoChatProcessor();
+
     /**
      * AccessibilityEvent
      *
@@ -53,6 +57,15 @@ public class HongbaoService extends AccessibilityService implements SharedPrefer
      */
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if(event.getPackageName().equals(DingDingProcessor.PackageName)){
+            dingDingProcessor.process(event);
+            return;
+        } else if(event.getPackageName().equals(HuoChatProcessor.PackageName)){
+            huoChatProcessor.process(event, this);
+        } else {
+            return;
+        }
+
         if (sharedPreferences == null) return;
 
         setCurrentActivityName(event);
@@ -251,7 +264,7 @@ public class HongbaoService extends AccessibilityService implements SharedPrefer
 
         /* 聊天会话窗口，遍历节点匹配“领取红包”和"查看红包" */
         AccessibilityNodeInfo node1 = (sharedPreferences.getBoolean("pref_watch_self", false)) ?
-                this.getTheLastNode(WECHAT_VIEW_OTHERS_CH, WECHAT_VIEW_SELF_CH) : this.getTheLastNode(WECHAT_VIEW_OTHERS_CH);
+                this.getTheLastNode(WECHAT_VIEW_OTHERS_CH, WECHAT_VIEW_SELF_CH, "微信红包") : this.getTheLastNode(WECHAT_VIEW_OTHERS_CH, "微信红包");
         if (node1 != null &&
                 (currentActivityName.contains(WECHAT_LUCKMONEY_CHATTING_ACTIVITY)
                         || currentActivityName.contains(WECHAT_LUCKMONEY_GENERAL_ACTIVITY))) {

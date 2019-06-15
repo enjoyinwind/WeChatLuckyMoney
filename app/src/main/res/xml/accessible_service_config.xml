@@ -4,8 +4,9 @@
     android:description="@string/app_description"
     android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeNotificationStateChanged"
     android:accessibilityFeedbackType="feedbackAllMask"
-    android:packageNames="com.tencent.mm"
+    android:packageNames="com.alibaba.android.rimet,com.huochat.im"
     android:notificationTimeout="10"
     android:settingsActivity="xyz.monkeytong.hongbao.activities.SettingsActivity"
     android:accessibilityFlags="flagDefault"
-    android:canRetrieveWindowContent="true"/>
+    android:canRetrieveWindowContent="true"
+    android:canPerformGestures="true"/>
