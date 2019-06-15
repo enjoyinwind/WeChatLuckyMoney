@@ -23,7 +23,7 @@ public class HuoChatProcessor {
     //是否已执行过（主要是为了只执行一次）
     private boolean isAlreadyExecutedOnce = false;
 
-    public void process(AccessibilityEvent event, AccessibilityService service){
+    public void process(final AccessibilityEvent event, final AccessibilityService service){
         if(event.getEventType() == TYPE_NOTIFICATION_STATE_CHANGED){
             watchNotification(event);
         } else {
@@ -31,14 +31,17 @@ public class HuoChatProcessor {
             if(PageCode.HomeActivityName.equals(currentActivityName)){
                 pageCode = PageCode.HomeActivity;
             } else if(PageCode.ChatActivityName.equals(currentActivityName)){
-                pageCode = PageCode.ChatActivity;
-                isAlreadyExecutedOnce = false;
+                if(pageCode != PageCode.ChatActivity){
+                    pageCode = PageCode.ChatActivity;
+                    isAlreadyExecutedOnce = false;
+                }
             } else if(PageCode.ReceivePacketDetailActivityName.equals(currentActivityName)){
-                pageCode = PageCode.ReceivePacketDetailActivity;
-                isAlreadyExecutedOnce = false;
+                if(pageCode != PageCode.ReceivePacketDetailActivity){
+                    pageCode = PageCode.ReceivePacketDetailActivity;
+                    isAlreadyExecutedOnce = false;
+                }
             } else if(PageCode.OpenPacketActivityName.equals(currentActivityName)){
                 pageCode = PageCode.OpenPacketActivity;
-                isAlreadyExecutedOnce = false;
             }
 
             switch (pageCode){
@@ -50,17 +53,21 @@ public class HuoChatProcessor {
                     break;
                 case PageCode.ReceivePacketDetailActivity:
                     if(!isAlreadyExecutedOnce){
-                        service.performGlobalAction(GLOBAL_ACTION_BACK);
                         isAlreadyExecutedOnce = true;
+                        new android.os.Handler().postDelayed(
+                                new Runnable() {
+                                    public void run() {
+                                        service.performGlobalAction(GLOBAL_ACTION_BACK);
+                                    }
+                                },
+                                1000);
                     }
                     break;
                 case PageCode.OpenPacketActivity:
-                    if(!isAlreadyExecutedOnce){
-                        openPacket(event);
-                        isAlreadyExecutedOnce = true;
-                    }
                     break;
             }
+
+            openPacket(event);
         }
     }
 
@@ -199,28 +206,41 @@ public class HuoChatProcessor {
 
                 --i;
             }
-        }
 
-        //没有红包直接返回，有红包不会返回
-        if(!hasPacket && !isAlreadyExecutedOnce){
-            service.performGlobalAction(GLOBAL_ACTION_BACK);
-            isAlreadyExecutedOnce = true;
+            //没有红包直接返回，有红包不会返回
+            if(!hasPacket && !isAlreadyExecutedOnce){
+                service.performGlobalAction(GLOBAL_ACTION_BACK);
+                isAlreadyExecutedOnce = true;
+            }
         }
     }
 
-    private void openPacket(AccessibilityEvent event){
+    private void openPacket(final AccessibilityEvent event){
         AccessibilityNodeInfo rootNodeInfo = event.getSource();
         if(null == rootNodeInfo){
             return;
         }
 
         //找到开红包按钮，并点击；
-        List<AccessibilityNodeInfo> nodeInfoList = rootNodeInfo.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
+        clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_open");
+
+        //红包已抢完
+        List<AccessibilityNodeInfo> nodeInfoList = rootNodeInfo.findAccessibilityNodeInfosByText("手慢了，红包抢完了");
         if(nodeInfoList != null && nodeInfoList.size() > 0){
-            nodeInfoList.get(0).performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_close");
         }
 
         rootNodeInfo.recycle();
+    }
+
+    private void clickByViewId(AccessibilityNodeInfo nodeInfo, String viewId){
+        List<AccessibilityNodeInfo> nodeInfoList = nodeInfo.findAccessibilityNodeInfosByViewId(viewId);
+        if(nodeInfoList != null && nodeInfoList.size() > 0){
+            AccessibilityNodeInfo clickableNode = nodeInfoList.get(0);
+            if(clickableNode.isClickable()){
+                clickableNode.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            }
+        }
     }
 
     private AccessibilityNodeInfo getClickableParentNode(AccessibilityNodeInfo node){
