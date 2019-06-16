@@ -197,9 +197,13 @@ public class HuoChatProcessor {
                 //领取红包后，聊天窗口里会有一条记录显示"你领取了某某人的红包"
                 List<AccessibilityNodeInfo> hintNodeList = current.findAccessibilityNodeInfosByViewId("com.huochat.im:id/tv_hint");
                 if(hintNodeList != null && hintNodeList.size() > 0){
-                    i = i - 2;
+                    AccessibilityNodeInfo hintNode = hintNodeList.get(0);
+                    String hintTxt = hintNode.getText() != null ? hintNode.getText().toString() : "";
+                    if(hintTxt.startsWith("你领取") && hintTxt.endsWith("的红包")){
+                        i = i - 2;
 //                    continue;
-                    break;
+                        break;
+                    }
                 }
 
                 //判断是否有红包
