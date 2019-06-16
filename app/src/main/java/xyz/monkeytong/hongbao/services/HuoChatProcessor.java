@@ -64,7 +64,7 @@ public class HuoChatProcessor {
                                             service.performGlobalAction(GLOBAL_ACTION_BACK);
                                         }
                                     },
-                                    500);
+                                    800);
                         }
                         break;
                     case PageCode.OpenPacketActivity:
