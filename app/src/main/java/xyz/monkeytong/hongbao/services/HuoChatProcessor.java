@@ -64,13 +64,15 @@ public class HuoChatProcessor {
                                             service.performGlobalAction(GLOBAL_ACTION_BACK);
                                         }
                                     },
-                                    1000);
+                                    500);
                         }
                         break;
                     case PageCode.OpenPacketActivity:
                         break;
                 }
 
+                //上面页面识别问题，在意识到是开红包对话框后，再去点击"开"，可能无法获取到对应view进行点击
+                //因此开红包动作在每个页面都会执行
                 openPacket(service);
             }
         }
@@ -239,25 +241,6 @@ public class HuoChatProcessor {
                 }
             }
         }
-        {
-            AccessibilityNodeInfo node = service.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
-            if(node != null){
-                List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
-                if(nodeInfoList != null && nodeInfoList.size() > 0){
-                    Log.d(TAG, "openPacket: FOCUS_ACCESSIBILITY iv_open=" + nodeInfoList.size());
-                }
-            }
-        }
-        {
-            AccessibilityNodeInfo node = service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-            if(node != null){
-                List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
-                if(nodeInfoList != null && nodeInfoList.size() > 0){
-                    Log.d(TAG, "openPacket: FOCUS_INPUT iv_open=" + nodeInfoList.size());
-                }
-            }
-        }
-
 
         AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
         if(null == rootNodeInfo){
