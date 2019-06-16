@@ -7,8 +7,10 @@ import android.app.PendingIntent;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.os.Parcelable;
+import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 
 import java.util.List;
 
@@ -16,6 +18,7 @@ import static android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BA
 import static android.view.accessibility.AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED;
 
 public class HuoChatProcessor {
+    private static final String TAG = HuoChatProcessor.class.getSimpleName();
     public static final String PackageName = "com.huochat.im";
     private boolean mutex = false;
     private boolean showDialog = false;
@@ -27,47 +30,49 @@ public class HuoChatProcessor {
         if(event.getEventType() == TYPE_NOTIFICATION_STATE_CHANGED){
             watchNotification(event);
         } else {
-            String currentActivityName = event.getClassName().toString();
-            if(PageCode.HomeActivityName.equals(currentActivityName)){
-                pageCode = PageCode.HomeActivity;
-            } else if(PageCode.ChatActivityName.equals(currentActivityName)){
-                if(pageCode != PageCode.ChatActivity){
-                    pageCode = PageCode.ChatActivity;
-                    isAlreadyExecutedOnce = false;
-                }
-            } else if(PageCode.ReceivePacketDetailActivityName.equals(currentActivityName)){
-                if(pageCode != PageCode.ReceivePacketDetailActivity){
-                    pageCode = PageCode.ReceivePacketDetailActivity;
-                    isAlreadyExecutedOnce = false;
-                }
-            } else if(PageCode.OpenPacketActivityName.equals(currentActivityName)){
-                pageCode = PageCode.OpenPacketActivity;
-            }
-
-            switch (pageCode){
-                case PageCode.HomeActivity:
-                    watchChatList(event, service);
-                    break;
-                case PageCode.ChatActivity:
-                    findPacket(event, service);
-                    break;
-                case PageCode.ReceivePacketDetailActivity:
-                    if(!isAlreadyExecutedOnce){
-                        isAlreadyExecutedOnce = true;
-                        new android.os.Handler().postDelayed(
-                                new Runnable() {
-                                    public void run() {
-                                        service.performGlobalAction(GLOBAL_ACTION_BACK);
-                                    }
-                                },
-                                1000);
+            if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+                String currentActivityName = event.getClassName().toString();
+                if(PageCode.HomeActivityName.equals(currentActivityName)){
+                    pageCode = PageCode.HomeActivity;
+                } else if(PageCode.ChatActivityName.equals(currentActivityName)){
+                    if(pageCode != PageCode.ChatActivity){
+                        pageCode = PageCode.ChatActivity;
+                        isAlreadyExecutedOnce = false;
                     }
-                    break;
-                case PageCode.OpenPacketActivity:
-                    break;
-            }
+                } else if(PageCode.ReceivePacketDetailActivityName.equals(currentActivityName)){
+                    if(pageCode != PageCode.ReceivePacketDetailActivity){
+                        pageCode = PageCode.ReceivePacketDetailActivity;
+                        isAlreadyExecutedOnce = false;
+                    }
+                } else if(PageCode.OpenPacketActivityName.equals(currentActivityName)){
+                    pageCode = PageCode.OpenPacketActivity;
+                }
+            } else {
+                switch (pageCode){
+                    case PageCode.HomeActivity:
+                        watchChatList(event, service);
+                        break;
+                    case PageCode.ChatActivity:
+                        findPacket(event, service);
+                        break;
+                    case PageCode.ReceivePacketDetailActivity:
+                        if(!isAlreadyExecutedOnce){
+                            isAlreadyExecutedOnce = true;
+                            new android.os.Handler().postDelayed(
+                                    new Runnable() {
+                                        public void run() {
+                                            service.performGlobalAction(GLOBAL_ACTION_BACK);
+                                        }
+                                    },
+                                    1000);
+                        }
+                        break;
+                    case PageCode.OpenPacketActivity:
+                        break;
+                }
 
-            openPacket(event);
+                openPacket(service);
+            }
         }
     }
 
@@ -215,19 +220,57 @@ public class HuoChatProcessor {
         }
     }
 
-    private void openPacket(final AccessibilityEvent event){
-        AccessibilityNodeInfo rootNodeInfo = event.getSource();
+    private void test(int index, AccessibilityNodeInfo node){
+        if(node != null){
+            List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
+            if(nodeInfoList != null && nodeInfoList.size() > 0){
+                Log.d(TAG, "test: iv_open=" + nodeInfoList.size() + "  index=" + index);
+            }
+        }
+    }
+
+    private void openPacket(final AccessibilityService service){
+        if(service.getWindows() != null){
+            Log.d(TAG, "openPacket: service.getWindows().size()=" + service.getWindows().size());
+            List<AccessibilityWindowInfo> windowInfoList = service.getWindows();
+            for(int i = 0; i < windowInfoList.size(); i++){
+                if(windowInfoList.get(i) != null){
+                    test(i, windowInfoList.get(i).getRoot());
+                }
+            }
+        }
+        {
+            AccessibilityNodeInfo node = service.findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY);
+            if(node != null){
+                List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
+                if(nodeInfoList != null && nodeInfoList.size() > 0){
+                    Log.d(TAG, "openPacket: FOCUS_ACCESSIBILITY iv_open=" + nodeInfoList.size());
+                }
+            }
+        }
+        {
+            AccessibilityNodeInfo node = service.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if(node != null){
+                List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
+                if(nodeInfoList != null && nodeInfoList.size() > 0){
+                    Log.d(TAG, "openPacket: FOCUS_INPUT iv_open=" + nodeInfoList.size());
+                }
+            }
+        }
+
+
+        AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
         if(null == rootNodeInfo){
             return;
         }
-
-        //找到开红包按钮，并点击；
-        clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_open");
 
         //红包已抢完
         List<AccessibilityNodeInfo> nodeInfoList = rootNodeInfo.findAccessibilityNodeInfosByText("手慢了，红包抢完了");
         if(nodeInfoList != null && nodeInfoList.size() > 0){
             clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_close");
+        } else {
+            //找到开红包按钮，并点击；
+            clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_open");
         }
 
         rootNodeInfo.recycle();
@@ -236,10 +279,13 @@ public class HuoChatProcessor {
     private void clickByViewId(AccessibilityNodeInfo nodeInfo, String viewId){
         List<AccessibilityNodeInfo> nodeInfoList = nodeInfo.findAccessibilityNodeInfosByViewId(viewId);
         if(nodeInfoList != null && nodeInfoList.size() > 0){
+            Log.d(TAG, "clickByViewId: " + viewId + "  " + nodeInfoList.size());
             AccessibilityNodeInfo clickableNode = nodeInfoList.get(0);
             if(clickableNode.isClickable()){
                 clickableNode.performAction(AccessibilityNodeInfo.ACTION_CLICK);
             }
+        } else {
+            Log.d(TAG, "clickByViewId: " + viewId + "  null");
         }
     }
 
