@@ -10,7 +10,6 @@ import android.os.Parcelable;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityWindowInfo;
 
 import java.util.List;
 
@@ -227,26 +226,7 @@ public class HuoChatProcessor {
         }
     }
 
-    private void test(int index, AccessibilityNodeInfo node){
-        if(node != null){
-            List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/iv_open");
-            if(nodeInfoList != null && nodeInfoList.size() > 0){
-                Log.d(TAG, "test: iv_open=" + nodeInfoList.size() + "  index=" + index);
-            }
-        }
-    }
-
     private void openPacket(final AccessibilityService service){
-        if(service.getWindows() != null){
-            Log.d(TAG, "openPacket: service.getWindows().size()=" + service.getWindows().size());
-            List<AccessibilityWindowInfo> windowInfoList = service.getWindows();
-            for(int i = 0; i < windowInfoList.size(); i++){
-                if(windowInfoList.get(i) != null){
-                    test(i, windowInfoList.get(i).getRoot());
-                }
-            }
-        }
-
         AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
         if(null == rootNodeInfo){
             return;
