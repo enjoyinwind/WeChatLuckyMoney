@@ -195,6 +195,7 @@ public class HuoChatProcessor {
             while (i > -1){
                 AccessibilityNodeInfo current = list.get(i);
 
+                //领取红包后，聊天窗口里会有一条记录显示"你领取了某某人的红包"
                 List<AccessibilityNodeInfo> hintNodeList = current.findAccessibilityNodeInfosByViewId("com.huochat.im:id/tv_hint");
                 if(hintNodeList != null && hintNodeList.size() > 0){
                     i = i - 2;
@@ -202,13 +203,17 @@ public class HuoChatProcessor {
                     break;
                 }
 
+                //判断是否有红包
                 List<AccessibilityNodeInfo> packetTipsNodeList = current.findAccessibilityNodeInfosByViewId("com.huochat.im:id/tv_status");
                 if(packetTipsNodeList != null && packetTipsNodeList.size() > 0){
-                    //红包
-                    isAlreadyExecutedOnce = true;
-                    click(packetTipsNodeList.get(0), service);
-                    hasPacket = true;
-                    break;
+                    AccessibilityNodeInfo packetNode = packetTipsNodeList.get(0);
+                    if(packetNode.getText() != null && packetNode.getText().toString().contains("领取红包")){
+                        //找到红包后，进行点击
+                        isAlreadyExecutedOnce = true;
+                        click(packetNode, service);
+                        hasPacket = true;
+                        break;
+                    }
                 }
 
                 --i;
