@@ -10,6 +10,7 @@ import android.os.Parcelable;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 
 import java.util.List;
 
@@ -20,16 +21,23 @@ public class HuoChatProcessor {
     private static final String TAG = HuoChatProcessor.class.getSimpleName();
     public static final String PackageName = "com.huochat.im";
     private boolean mutex = false;
-    private boolean showDialog = false;
+    //表示当前在什么页面
     private int pageCode;
     //是否已执行过（主要是为了只执行一次）
     private boolean isAlreadyExecutedOnce = false;
+    //是否出现过红包已抢完情况
+    private boolean isPacketOver = false;
 
     public void process(final AccessibilityEvent event, final AccessibilityService service){
         if(event.getEventType() == TYPE_NOTIFICATION_STATE_CHANGED){
             watchNotification(event);
         } else {
-            if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
+//            Log.d(TAG, "process: " + event.getEventType());
+            if(event.getEventType() == AccessibilityEvent.TYPE_VIEW_SCROLLED){
+                if(pageCode == PageCode.ChatActivity){
+                    isAlreadyExecutedOnce = false;
+                }
+            } else if(event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED){
                 String currentActivityName = event.getClassName().toString();
                 if(PageCode.HomeActivityName.equals(currentActivityName)){
                     pageCode = PageCode.HomeActivity;
@@ -73,6 +81,8 @@ public class HuoChatProcessor {
                 //上面页面识别问题，在意识到是开红包对话框后，再去点击"开"，可能无法获取到对应view进行点击
                 //因此开红包动作在每个页面都会执行
                 openPacket(service);
+
+//                deletePacket(service);
             }
         }
     }
@@ -103,10 +113,6 @@ public class HuoChatProcessor {
         if(null == rootNodeInfo){
             return;
         }
-
-//        if(event.getClassName().equals("com.huochat.im.activity.HomeActivity")){
-//            mutex = false;
-//        }
 
         if(mutex){
             return;
@@ -175,7 +181,7 @@ public class HuoChatProcessor {
         }
     }
 
-    private void findPacket(AccessibilityEvent event, AccessibilityService service){
+    private void findPacket(AccessibilityEvent event, final AccessibilityService service){
         AccessibilityNodeInfo rootNodeInfo = event.getSource();
         if(null == rootNodeInfo){
             return;
@@ -211,11 +217,29 @@ public class HuoChatProcessor {
                 if(packetTipsNodeList != null && packetTipsNodeList.size() > 0){
                     AccessibilityNodeInfo packetNode = packetTipsNodeList.get(0);
                     if(packetNode.getText() != null && packetNode.getText().toString().contains("领取红包")){
-                        //找到红包后，进行点击
-                        isAlreadyExecutedOnce = true;
-                        click(packetNode, service);
-                        hasPacket = true;
-                        break;
+                        if(isPacketOver){
+                            //红包已抢完情况下，先退出聊天窗口
+                            break;
+//                            //如果红包出现已抢完情况，再次遍历时把它删掉
+//                            AccessibilityNodeInfo temp = getNodeByViewId(current, "com.huochat.im:id/chat_content");
+//                            if(temp != null){
+//                                temp.performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK);
+//
+//                                new android.os.Handler().postDelayed(
+//                                        new Runnable() {
+//                                            public void run() {
+//                                                deletePacket(service);
+//                                            }
+//                                        },
+//                                        2000);
+//                            }
+                        } else {
+                            //找到红包后，进行点击
+                            isAlreadyExecutedOnce = true;
+                            click(packetNode, service);
+                            hasPacket = true;
+                            break;
+                        }
                     }
                 }
 
@@ -226,6 +250,7 @@ public class HuoChatProcessor {
             if(!hasPacket && !isAlreadyExecutedOnce){
                 service.performGlobalAction(GLOBAL_ACTION_BACK);
                 isAlreadyExecutedOnce = true;
+                isPacketOver = false;
             }
         }
     }
@@ -239,7 +264,12 @@ public class HuoChatProcessor {
         //红包已抢完
         List<AccessibilityNodeInfo> nodeInfoList = rootNodeInfo.findAccessibilityNodeInfosByText("手慢了，红包抢完了");
         if(nodeInfoList != null && nodeInfoList.size() > 0){
-            clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_close");
+            boolean result = clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_close");
+
+            //关闭了开红包界面，说明红包已抢完，设置下标志位
+            if(result && !isPacketOver){
+                isPacketOver = true;
+            }
         } else {
             //找到开红包按钮，并点击；
             clickByViewId(rootNodeInfo, "com.huochat.im:id/iv_open");
@@ -248,17 +278,20 @@ public class HuoChatProcessor {
         rootNodeInfo.recycle();
     }
 
-    private void clickByViewId(AccessibilityNodeInfo nodeInfo, String viewId){
+    private boolean clickByViewId(AccessibilityNodeInfo nodeInfo, String viewId){
         List<AccessibilityNodeInfo> nodeInfoList = nodeInfo.findAccessibilityNodeInfosByViewId(viewId);
         if(nodeInfoList != null && nodeInfoList.size() > 0){
             Log.d(TAG, "clickByViewId: " + viewId + "  " + nodeInfoList.size());
             AccessibilityNodeInfo clickableNode = nodeInfoList.get(0);
             if(clickableNode.isClickable()){
                 clickableNode.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                return true;
             }
         } else {
             Log.d(TAG, "clickByViewId: " + viewId + "  null");
         }
+
+        return false;
     }
 
     private AccessibilityNodeInfo getClickableParentNode(AccessibilityNodeInfo node){
@@ -270,6 +303,53 @@ public class HuoChatProcessor {
             return node;
         } else {
             return getClickableParentNode(node.getParent());
+        }
+    }
+
+    private AccessibilityNodeInfo getNodeByViewId(AccessibilityNodeInfo node, String viewId){
+        List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId(viewId);
+        if(nodeInfoList != null && nodeInfoList.size() > 0){
+            return nodeInfoList.get(0);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * 删除已抢完的红包
+     * @param service
+     */
+    private void deletePacket(final AccessibilityService service){
+        if(service.getWindows() != null){
+            Log.d(TAG, "deletePacket: service.getWindows().size()=" + service.getWindows().size());
+            List<AccessibilityWindowInfo> windowInfoList = service.getWindows();
+            for(int i = 0; i < windowInfoList.size(); i++){
+                if(windowInfoList.get(i) != null){
+                    test(i, windowInfoList.get(i).getRoot());
+                }
+            }
+        }
+
+        AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
+        if(null == rootNodeInfo){
+            return;
+        }
+
+        List<AccessibilityNodeInfo> list = rootNodeInfo.findAccessibilityNodeInfosByViewId("com.huochat.im:id/ll_menu_item");
+        if(list != null && list.size() > 0){
+            AccessibilityNodeInfo node = list.get(0);
+            node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+            isPacketOver = false;
+            isAlreadyExecutedOnce = false;
+        }
+    }
+
+    private void test(int index, AccessibilityNodeInfo node){
+        if(node != null){
+            List<AccessibilityNodeInfo> nodeInfoList = node.findAccessibilityNodeInfosByViewId("com.huochat.im:id/ll_menu_item");
+            if(nodeInfoList != null && nodeInfoList.size() > 0){
+                Log.d(TAG, "test: ll_menu_item=" + nodeInfoList.size() + "  index=" + index);
+            }
         }
     }
 }
