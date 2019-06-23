@@ -330,6 +330,8 @@ public class HuoChatProcessor {
 
         clickByViewId(rootNodeInfo, "com.huochat.im:id/tv_conmit_btn");
 
+        clickByViewId(rootNodeInfo, "com.huochat.im:id/tv_ok_btn");
+
         rootNodeInfo.recycle();
     }
 
