@@ -1,7 +1,10 @@
 package xyz.monkeytong.hongbao.services;
 
+import android.accessibilityservice.AccessibilityService;
 import android.app.Notification;
 import android.app.PendingIntent;
+import android.os.Build;
+import android.os.Bundle;
 import android.os.Parcelable;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
@@ -15,12 +18,13 @@ public class DingDingProcessor {
     public static final String PackageName = "com.alibaba.android.rimet";
     private boolean mutex = false;
     private boolean showDialog = false;
+    private long lastTimeMills;
 
-    public void process(AccessibilityEvent event){
+    public void process(AccessibilityEvent event, AccessibilityService service){
         if(event.getEventType() == TYPE_NOTIFICATION_STATE_CHANGED){
             watchNotification(event);
         } else {
-            watchChat(event);
+            reply(event, service);
         }
     }
 
@@ -66,6 +70,44 @@ public class DingDingProcessor {
         }
 
         rootNodeInfo.recycle();
+    }
+
+    private void reply(AccessibilityEvent event, AccessibilityService service){
+        AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
+        if(null == rootNodeInfo){
+            return;
+        }
+
+        long currentTimeMills = System.currentTimeMillis();
+        if(currentTimeMills - lastTimeMills > 3000){
+            List<AccessibilityNodeInfo> etList = rootNodeInfo.findAccessibilityNodeInfosByViewId("com.alibaba.android.rimet:id/et_sendmessage");
+            if(etList.size() > 0){
+                AccessibilityNodeInfo nodeInfo = etList.get(0);
+                if(nodeInfo != null){
+                    setText(nodeInfo);
+                }
+            }
+
+            List<AccessibilityNodeInfo> btnList = rootNodeInfo.findAccessibilityNodeInfosByViewId("com.alibaba.android.rimet:id/btn_send");
+            if(btnList.size() > 0){
+                AccessibilityNodeInfo nodeInfo = btnList.get(0);
+                nodeInfo.performAction(ACTION_CLICK);
+            }
+
+            lastTimeMills = currentTimeMills;
+        }
+
+
+        rootNodeInfo.recycle();
+    }
+
+    private void setText(AccessibilityNodeInfo info) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Bundle arguments = new Bundle();
+            arguments.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, "谢谢");
+            info.performAction(AccessibilityNodeInfo.ACTION_FOCUS);
+            info.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments);
+        }
     }
 
     private void unpack(){

@@ -82,6 +82,7 @@ public class HuoChatProcessor {
                 //因此开红包动作在每个页面都会执行
                 openPacket(service);
 
+                answer(service);
 //                deletePacket(service);
             }
         }
@@ -292,6 +293,44 @@ public class HuoChatProcessor {
         }
 
         return false;
+    }
+
+    private void answer(final AccessibilityService service){
+        beginAnswer(service);
+
+        answering(service);
+    }
+
+    /**
+     * 开始答题
+     * @param service
+     */
+    private void beginAnswer(final AccessibilityService service){
+        AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
+        if(null == rootNodeInfo){
+            return;
+        }
+
+        clickByViewId(rootNodeInfo, "com.huochat.im:id/tv_receive_btn");
+
+        rootNodeInfo.recycle();
+    }
+
+    /**
+     * 选择答案并提交
+     * @param service
+     */
+    private void answering(final AccessibilityService service){
+        AccessibilityNodeInfo rootNodeInfo = service.getRootInActiveWindow();
+        if(null == rootNodeInfo){
+            return;
+        }
+
+        clickByViewId(rootNodeInfo, "com.huochat.im:id/ll_a");
+
+        clickByViewId(rootNodeInfo, "com.huochat.im:id/tv_conmit_btn");
+
+        rootNodeInfo.recycle();
     }
 
     private AccessibilityNodeInfo getClickableParentNode(AccessibilityNodeInfo node){

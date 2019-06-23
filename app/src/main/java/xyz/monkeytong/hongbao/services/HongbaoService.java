@@ -58,7 +58,7 @@ public class HongbaoService extends AccessibilityService implements SharedPrefer
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
         if(event.getPackageName().equals(DingDingProcessor.PackageName)){
-            dingDingProcessor.process(event);
+            dingDingProcessor.process(event, this);
             return;
         } else if(event.getPackageName().equals(HuoChatProcessor.PackageName)){
             huoChatProcessor.process(event, this);
